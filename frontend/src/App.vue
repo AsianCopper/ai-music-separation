@@ -23,7 +23,7 @@
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
           <span>点击或拖拽上传音频文件</span>
-          <span class="hint">支持 MP3 / WAV / FLAC</span>
+          <span class="hint">支持 WAV / MP3 / FLAC / OGG</span>
         </label>
         <input id="file-input" type="file" accept="audio/*" hidden @change="onFilePicked" ref="fileInput" />
       </template>

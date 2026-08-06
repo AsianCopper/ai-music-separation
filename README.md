@@ -204,7 +204,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cu121
 ```
 
 ### Q: 支持哪些音频格式？
-Demucs 支持 MP3、WAV、FLAC、OGG 等常见格式。导出格式固定为 WAV（16-bit, 44.1kHz 立体声）。
+WAV / MP3 / FLAC / OGG 均可上传，后端会根据原始扩展名保留格式。导出格式固定为 WAV（16-bit, 44.1kHz 立体声）。
 
 ### Q: 为什么分离后的文件那么大？
 WAV 是无损格式，一首 4 分钟的歌约 40MB。混音输出也是 WAV，如需压缩请用其他工具转码。
