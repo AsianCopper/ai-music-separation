@@ -73,6 +73,23 @@ class Launcher
         return proc;
     }
 
+    static void KillPort(int port)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd",
+                Arguments = "/c \"for /f \\\"tokens=5\\\" %a in ('netstat -ano ^| findstr :" + port + " ^| findstr LISTENING') do taskkill /F /PID %a >nul 2>&1\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            var p = Process.Start(psi);
+            p.WaitForExit(2000);
+        }
+        catch { }
+    }
+
     static void KillChildren()
     {
         foreach (var c in children)
@@ -104,7 +121,8 @@ class Launcher
         }
         else if (PortInUse(8000))
         {
-            Log("Backend already running on port 8000.");
+            Log("Port 8000 in use, killing old process...");
+            KillPort(8000);
         }
         else
         {
@@ -128,7 +146,8 @@ class Launcher
         }
         else if (PortInUse(5173))
         {
-            Log("Frontend already running on port 5173.");
+            Log("Port 5173 in use, killing old process...");
+            KillPort(5173);
         }
         else
         {
