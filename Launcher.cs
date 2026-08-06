@@ -1,16 +1,20 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 
 class Launcher
 {
     static string root;
+    static List<Process> children = new List<Process>();
+    static bool running = true;
 
-    static void Log(string msg) { Console.WriteLine("[{0:HH:mm:ss}] {1}", DateTime.Now, msg); }
-    static void Error(string msg) { Console.ForegroundColor = ConsoleColor.Red; Console.WriteLine(msg); Console.ResetColor(); }
+    static void Log(string msg)
+    {
+        Console.WriteLine("[{0:HH:mm:ss}] {1}", DateTime.Now, msg);
+    }
 
     static bool PortInUse(int port)
     {
@@ -18,24 +22,57 @@ class Launcher
         catch { return false; }
     }
 
-    static string FindNpm()
+    static string FindNode()
     {
-        // Check common node install paths
-        string[] candidates = {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "nodejs", "npx.cmd"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "nodejs", "npx.cmd"),
-            @"C:\Program Files\nodejs\npx.cmd",
+        string[] dirs = {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "nodejs"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "nodejs"),
+            @"C:\Program Files\nodejs",
         };
-        foreach (var p in candidates)
-            if (File.Exists(p)) return p;
-        return "npx"; // fallback
+        foreach (var d in dirs)
+        {
+            var npx = Path.Combine(d, "npx.cmd");
+            if (File.Exists(npx)) return npx;
+        }
+        return "npx";
+    }
+
+    static Process Launch(string exe, string args, string workDir)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = exe,
+            Arguments = args,
+            WorkingDirectory = workDir,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+        var proc = new Process { StartInfo = psi };
+        proc.OutputDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(e.Data); };
+        proc.ErrorDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(e.Data); };
+        proc.Start();
+        proc.BeginOutputReadLine();
+        proc.BeginErrorReadLine();
+        children.Add(proc);
+        return proc;
+    }
+
+    static void KillChildren()
+    {
+        foreach (var c in children)
+            try { if (!c.HasExited) c.Kill(); } catch { }
     }
 
     static void Main()
     {
-        Console.Title = "Music Remixer";
+        Console.Title = "Music Remixer — do not close this window";
+        Console.CancelKeyPress += (s, e) => { e.Cancel = true; running = false; };
+
         Console.WriteLine("================================================");
-        Console.WriteLine("  Music Remixer Launcher");
+        Console.WriteLine("  Music Remixer");
+        Console.WriteLine("  Close this window to stop all servers.");
         Console.WriteLine("================================================");
         Console.WriteLine();
 
@@ -45,89 +82,67 @@ class Launcher
         var backendDir = Path.Combine(root, "ai-service");
         var venvPython = Path.Combine(backendDir, "venv", "Scripts", "python.exe");
 
-        if (!Directory.Exists(backendDir))
+        if (!File.Exists(venvPython))
         {
-            Error("ai-service directory not found.");
-        }
-        else if (!File.Exists(venvPython))
-        {
-            Error("Backend venv not found. Run:");
-            Console.WriteLine("  cd ai-service");
-            Console.WriteLine("  python -m venv venv");
-            Console.WriteLine("  venv\\Scripts\\activate && pip install -r requirements.txt");
+            Console.WriteLine("[!] Backend venv not found. Skipping backend.");
+            Console.WriteLine("    Run: cd ai-service && python -m venv venv && pip install -r requirements.txt");
         }
         else if (PortInUse(8000))
         {
-            Log("Backend already running on port 8000, skipping.");
+            Log("Backend already running on port 8000.");
         }
         else
         {
-            Log("Starting backend...");
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "cmd",
-                    Arguments = "/c \"\"" + venvPython + "\" -m uvicorn main:app --host 127.0.0.1 --port 8000\"",
-                    WorkingDirectory = backendDir,
-                    UseShellExecute = false,
-                });
-            }
-            catch (Exception ex) { Error("Failed to start backend: " + ex.Message); }
+            Log("Starting backend (FastAPI :8000)...");
+            Launch(
+                Path.Combine(backendDir, "venv", "Scripts", "python.exe"),
+                "-u -m uvicorn main:app --host 127.0.0.1 --port 8000",
+                backendDir
+            );
         }
 
         // ---- Frontend ----
         var frontendDir = Path.Combine(root, "frontend");
         var nodeModules = Path.Combine(frontendDir, "node_modules");
-        var npmExe = FindNpm();
+        var npx = FindNode();
 
-        if (!Directory.Exists(frontendDir))
+        if (!Directory.Exists(nodeModules))
         {
-            Error("frontend directory not found.");
-        }
-        else if (!Directory.Exists(nodeModules))
-        {
-            Error("node_modules not found. Run:");
-            Console.WriteLine("  cd frontend");
-            Console.WriteLine("  npm install");
+            Console.WriteLine("[!] node_modules not found. Skipping frontend.");
+            Console.WriteLine("    Run: cd frontend && npm install");
         }
         else if (PortInUse(5173))
         {
-            Log("Frontend already running on port 5173, skipping.");
+            Log("Frontend already running on port 5173.");
         }
         else
         {
-            Log("Starting frontend...");
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "cmd",
-                    Arguments = "/c \"\"" + npmExe + "\" vite --port 5173\"",
-                    WorkingDirectory = frontendDir,
-                    UseShellExecute = false,
-                });
-            }
-            catch (Exception ex) { Error("Failed to start frontend: " + ex.Message); }
+            Log("Starting frontend (Vite :5173)...");
+            Launch(npx, "vite --port 5173", frontendDir);
         }
 
         // ---- Open browser ----
-        Console.WriteLine();
-        Log("Opening browser...");
-        Thread.Sleep(2000);
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = "http://localhost:5173",
-            UseShellExecute = true,
-        });
+        Thread.Sleep(3000);
+        try { Process.Start(new ProcessStartInfo("http://localhost:5173", "") { UseShellExecute = true }); } catch { }
 
         Console.WriteLine();
         Console.WriteLine("================================================");
+        Console.WriteLine("  All servers running. Close this window to stop.");
         Console.WriteLine("  Backend:  http://127.0.0.1:8000");
         Console.WriteLine("  Frontend: http://localhost:5173");
         Console.WriteLine("================================================");
-        Console.Beep();
-        Console.WriteLine("Press any key to close this window (servers stay running).");
-        Console.ReadKey();
+        Console.WriteLine();
+
+        // Block until user closes the window
+        while (running)
+        {
+            if (children.TrueForAll(c => c.HasExited))
+                break;
+            Thread.Sleep(1000);
+        }
+
+        Console.WriteLine("Shutting down...");
+        KillChildren();
+        Console.WriteLine("Done.");
     }
 }
