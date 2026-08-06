@@ -119,13 +119,11 @@ class Launcher
             Console.WriteLine("[!] Backend venv not found. Skipping backend.");
             Console.WriteLine("    Run: cd ai-service && python -m venv venv && pip install -r requirements.txt");
         }
-        else if (PortInUse(8000))
-        {
-            Log("Port 8000 in use, killing old process...");
-            KillPort(8000);
-        }
         else
         {
+            Log("Cleaning up port 8000...");
+            KillPort(8000);
+            Thread.Sleep(1000);
             Log("Starting backend (FastAPI :8000)...");
             Launch(
                 Path.Combine(backendDir, "venv", "Scripts", "python.exe"),
@@ -144,13 +142,11 @@ class Launcher
             Console.WriteLine("[!] node_modules not found. Skipping frontend.");
             Console.WriteLine("    Run: cd frontend && npm install");
         }
-        else if (PortInUse(5173))
-        {
-            Log("Port 5173 in use, killing old process...");
-            KillPort(5173);
-        }
         else
         {
+            Log("Cleaning up ports 5173-5177...");
+            for (int p = 5173; p <= 5177; p++) KillPort(p);
+            Thread.Sleep(1500);
             Log("Starting frontend (Vite :5173)...");
             Launch(npx, "vite --port 5173", frontendDir);
         }
