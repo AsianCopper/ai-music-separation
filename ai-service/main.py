@@ -50,7 +50,9 @@ async def separate(file: UploadFile = File(...)):
     job_id = uuid.uuid4().hex[:10]
     input_dir = "uploads"
     os.makedirs(input_dir, exist_ok=True)
-    input_path = f"{input_dir}/{job_id}.mp3"
+    # 保留原始文件扩展名
+    ext = os.path.splitext(file.filename)[1] or ".mp3"
+    input_path = f"{input_dir}/{job_id}{ext}"
 
     with open(input_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
