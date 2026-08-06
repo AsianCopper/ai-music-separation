@@ -3,7 +3,7 @@
     <div class="card">
       <!-- ====== header ====== -->
       <div class="hero">
-        <h1>AI Music Remixer</h1>
+        <h1>Music Remixer</h1>
         <p class="author">by 亚洲铜</p>
       </div>
 

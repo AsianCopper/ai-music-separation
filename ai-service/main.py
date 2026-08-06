@@ -41,7 +41,7 @@ class MixRequest(BaseModel):
 
 @app.get("/")
 def home():
-    return {"message": "AI 音乐分离器运行中..."}
+    return {"message": "Music Remixer is running..."}
 
 
 # ---- 第一步：上传 → 后台分离 ----
