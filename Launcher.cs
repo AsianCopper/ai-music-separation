@@ -10,11 +10,15 @@ class Launcher
     static string root;
     static List<Process> children = new List<Process>();
     static bool running = true;
+    static System.Text.RegularExpressions.Regex ansiRegex =
+        new System.Text.RegularExpressions.Regex(@"\x1b\[[0-9;]*m");
 
     static void Log(string msg)
     {
         Console.WriteLine("[{0:HH:mm:ss}] {1}", DateTime.Now, msg);
     }
+
+    static string StripAnsi(string s) { return ansiRegex.Replace(s, ""); }
 
     static bool PortInUse(int port)
     {
@@ -49,9 +53,11 @@ class Launcher
             RedirectStandardError = true,
             CreateNoWindow = true,
         };
+        psi.EnvironmentVariables["NO_COLOR"] = "1";
+        psi.EnvironmentVariables["FORCE_COLOR"] = "0";
         var proc = new Process { StartInfo = psi };
-        proc.OutputDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(e.Data); };
-        proc.ErrorDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(e.Data); };
+        proc.OutputDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(StripAnsi(e.Data)); };
+        proc.ErrorDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(StripAnsi(e.Data)); };
         proc.Start();
         proc.BeginOutputReadLine();
         proc.BeginErrorReadLine();
