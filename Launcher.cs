@@ -79,13 +79,13 @@ class Launcher
         {
             var psi = new ProcessStartInfo
             {
-                FileName = "cmd",
-                Arguments = "/c \"for /f \\\"tokens=5\\\" %a in ('netstat -ano ^| findstr :" + port + " ^| findstr LISTENING') do taskkill /F /PID %a >nul 2>&1\"",
+                FileName = "powershell",
+                Arguments = "-NoProfile -Command \"Get-NetTCPConnection -LocalPort " + port + " -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
             var p = Process.Start(psi);
-            p.WaitForExit(2000);
+            p.WaitForExit(3000);
         }
         catch { }
     }
