@@ -18,7 +18,15 @@ class Launcher
         Console.WriteLine("[{0:HH:mm:ss}] {1}", DateTime.Now, msg);
     }
 
-    static string StripAnsi(string s) { return ansiRegex.Replace(s, ""); }
+    static string Clean(string s)
+    {
+        s = ansiRegex.Replace(s, "");
+        // Replace common Unicode chars that cmd.exe can't render
+        s = s.Replace('➜', '>');  // ➜
+        s = s.Replace('✔', 'v');  // ✔
+        s = s.Replace('✖', 'x');  // ✖
+        return s;
+    }
 
     static bool PortInUse(int port)
     {
@@ -56,8 +64,8 @@ class Launcher
         psi.EnvironmentVariables["NO_COLOR"] = "1";
         psi.EnvironmentVariables["FORCE_COLOR"] = "0";
         var proc = new Process { StartInfo = psi };
-        proc.OutputDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(StripAnsi(e.Data)); };
-        proc.ErrorDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(StripAnsi(e.Data)); };
+        proc.OutputDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(Clean(e.Data)); };
+        proc.ErrorDataReceived += (s, e) => { if (e.Data != null) Console.WriteLine(Clean(e.Data)); };
         proc.Start();
         proc.BeginOutputReadLine();
         proc.BeginErrorReadLine();
@@ -73,6 +81,7 @@ class Launcher
 
     static void Main()
     {
+        Console.OutputEncoding = System.Text.Encoding.UTF8;
         Console.Title = "Music Remixer — do not close this window";
         Console.CancelKeyPress += (s, e) => { e.Cancel = true; running = false; };
 
